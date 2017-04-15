@@ -18,7 +18,7 @@
 #    docker-host connect <DOCKER_MACHINE_NAME>
 #
 #    Or, to point the docker cli to your local docker engine, run:
-#    docker-host reset
+#    docker-host connect
 #
 #   Or, to list all possible hosts, run:
 #   docker-host ls
@@ -27,31 +27,40 @@ function ls-running-machines () {
     docker-machine ls | grep Running
 }
 
-if [[ "$1" == "ls" ]];
+if [ -z "$1" ] || [ "$1" = "help" ] || [ "$1" = "h" ];
 then
-  ls-running-machines
-elif [[ "$1" == "reset" ]];
-then
-  for line in $(printenv | grep '^DOCKER_'); do
-    echo "Unset $line"
-    unset $(echo $line | sed -E "s/(.*)=.*/\1/g");
-  done
   echo
-  ls-running-machines
+  echo " Usage: docker-host [MACHINE_NODE|COMMAND]"
   echo
-  echo "The docker cli is now connected to the local docker engine."
-elif [[ "$1" == "connect" && ! -z "$2" ]];
+  echo " MACHINE_NODE:           Connect the docker cli to the specified machine node."
+  echo
+  echo " COMMAND:"
+  echo " localhost               Ensures the docker cli is reconnected with the docker engine running on the docker cli host "
+  echo " ls                      Lists all running docker machines"
+  echo " help                    Show this help menu"
+  echo
+elif [ "$1" = "local" ] || [ "$1" = "localhost" ] || [ "$1" = "l" ];
 then
-  eval $(docker-machine env $2)
+  docker_env_vars=$(printenv | grep '^DOCKER_')
+  echo
+  if [ -z "$docker_env_vars" ];
+  then
+    echo "The docker cli is already connected with you local docker engine."
+  else
+    echo "The operation will unset the following variables:"
+    echo "---"
+    echo "$docker_env_vars"
+    echo "---"
+    unset $(echo $docker_env_vars | sed -E "s/(.*)=.*/\1/g");
+    echo
+    ls-running-machines
+    echo
+    echo "The docker cli is now connected to the local docker engine."
+  fi
+elif [ "$1" = "ls" ];
+then
   ls-running-machines
 else
-  echo
-  echo " Usage: docker-host [option]"
-  echo
-  echo " Options:"
-  echo " connect <MACHINE_NODE>         Connect to the machine node"
-  echo " reset                          Removes connection with remote docker host"
-  echo " ls                             Lists all running docker machines"
-  echo " help                           Show this help menu"
-  echo
+    eval $(docker-machine env $1)
+    ls-running-machines
 fi
